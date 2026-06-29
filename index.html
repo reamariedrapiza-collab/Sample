@@ -1,95 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Firebase Login</title>
-<style>
-body{
-    font-family:Arial;
-    background:#f4f4f4;
-}
-.container{
-    width:320px;
-    margin:100px auto;
-    background:white;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 0 10px #ccc;
-}
-input,button{
-    width:100%;
-    padding:10px;
-    margin:8px 0;
-}
-button{
-    background:#007BFF;
-    color:white;
-    border:none;
-    cursor:pointer;
-}
-button:hover{
-    background:#0056b3;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth App</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-<body>
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+        
+        <div id="auth-view">
+            <h2 id="form-title" class="text-2xl font-bold mb-6 text-center text-gray-800">Login to Your Account</h2>
+            
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <button type="submit" id="submit-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-200">
+                    Login
+                </button>
+            </form>
 
-<div class="container">
-<h2>Login</h2>
+            <div class="mt-4 text-center">
+                <button id="toggle-view-btn" class="text-sm text-indigo-600 hover:underline">
+                    Don't have an account? Sign Up
+                </button>
+            </div>
+            
+            <p id="message" class="mt-4 text-center text-sm font-semibold hidden"></p>
+        </div>
 
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
+        <div id="dashboard-view" class="hidden text-center">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Welcome Tracker!</h2>
+            <p class="text-gray-600 mb-6">You have successfully logged in.</p>
+            <p id="user-email" class="font-medium text-indigo-600 mb-6"></p>
+            
+            <button id="logout-btn" class="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition duration-200">
+                Logout
+            </button>
+        </div>
 
-<button id="login">Login</button>
+    </div>
 
-<p id="msg"></p>
-</div>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-<script type="module">
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkf2Ef6qpJiGksL1usGdXpHQaxIeENNdk",
+            authDomain: "planning-with-ai-bb439.firebaseapp.com",
+            projectId: "planning-with-ai-bb439",
+            storageBucket: "planning-with-ai-bb439.firebasestorage.app",
+            messagingSenderId: "665371788118",
+            appId: "1:665371788118:web:28f1d12b6761fa72b20cf7"
+        };
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-import {
-getAuth,
-signInWithEmailAndPassword,
-onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        // DOM Elements
+        const authView = document.getElementById('auth-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const authForm = document.getElementById('auth-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submit-btn');
+        const formTitle = document.getElementById('form-title');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userEmailDisplay = document.getElementById('user-email');
+        const messageDisplay = document.getElementById('message');
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAjgQjzkfR7gsdgyBicdtSGRJF9jt7KXt4",
-  authDomain: "planning-with-ai-8c513.firebaseapp.com",
-  projectId: "planning-with-ai-8c513",
-  storageBucket: "planning-with-ai-8c513.firebasestorage.app",
-  messagingSenderId: "482282817546",
-  appId: "1:482282817546:web:afc8ca3ab27b153eb7f7f3"
-};
+        let isLoginView = true;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+        // Toggle between Login and Sign Up
+        toggleViewBtn.addEventListener('click', () => {
+            isLoginView = !isLoginView;
+            if (isLoginView) {
+                formTitle.textContent = "Login to Your Account";
+                submitBtn.textContent = "Login";
+                toggleViewBtn.textContent = "Don't have an account? Sign Up";
+            } else {
+                formTitle.textContent = "Create an Account";
+                submitBtn.textContent = "Sign Up";
+                toggleViewBtn.textContent = "Already have an account? Login";
+            }
+            clearMessage();
+        });
 
-document.getElementById("login").onclick=()=>{
+        // Handle Form Submission (Sign up / Login)
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
 
-const email=document.getElementById("email").value;
-const password=document.getElementById("password").value;
+            clearMessage();
 
-signInWithEmailAndPassword(auth,email,password)
-.then(()=>{
-location="dashboard.html";
-})
-.catch(e=>{
-document.getElementById("msg").innerHTML=e.message;
-});
+            if (isLoginView) {
+                // Log In Existing User
+                signInWithEmailAndPassword(auth, email, password)
+                    .catch(error => showMessage(error.message, true));
+            } else {
+                // Register New User
+                createUserWithEmailAndPassword(auth, email, password)
+                    .then(() => {
+                        showMessage("Account created successfully!", false);
+                    })
+                    .catch(error => showMessage(error.message, true));
+            }
+        });
 
-}
+        // Handle Logout
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth).catch(error => showMessage(error.message, true));
+        });
 
-onAuthStateChanged(auth,user=>{
-if(user){
-location="dashboard.html";
-}
-});
+        // Monitor Auth State (Listen for log-ins / log-outs)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in, show dashboard
+                authView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+                userEmailDisplay.textContent = `Logged in as: ${user.email}`;
+                authForm.reset();
+            } else {
+                // User is signed out, show login form
+                authView.classList.remove('hidden');
+                dashboardView.classList.add('hidden');
+            }
+        });
 
-</script>
+        // Helper functions for alerts
+        function showMessage(text, isError) {
+            messageDisplay.textContent = text;
+            messageDisplay.classList.remove('hidden');
+            messageDisplay.className = `mt-4 text-center text-sm font-semibold ${isError ? 'text-red-500' : 'text-green-500'}`;
+        }
 
+        function clearMessage() {
+            messageDisplay.classList.add('hidden');
+            messageDisplay.textContent = "";
+        }
+    </script>
 </body>
 </html>
